@@ -1,0 +1,146 @@
+``html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>斗地主赌博游戏</title>
+  <style>
+    /* 这里可以写一些CSS样式来美化网页 */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: green;
+    }
+    h1 {
+      text-align: center;
+      color: white;
+    }
+    .container {
+      width: 800px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card {
+      width: 80px;
+      height: 120px;
+      border: 1px solid black;
+      border-radius: 10px;
+      background-color: white;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    }
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .card.selected {
+      transform: translateY(-20px);
+    }
+    .button {
+      width: 100px;
+      height: 40px;
+      border: none;
+      border-radius: 20px;
+      background-color: orange;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: darkorange;
+    }
+    .button.disabled {
+      background-color: gray;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>斗地主赌博游戏</h1>
+  <div class="container">
+    <div id="player1" class="player">
+      <!-- 这里是玩家1的牌 -->
+    </div>
+    <div id="player2" class="player">
+      <!-- 这里是玩家2的牌 -->
+    </div>
+    <div id="player3" class="player">
+      <!-- 这里是玩家3的牌 -->
+    </div>
+  </div>
+  <div class="container">
+    <div id="landlord" class="player">
+      <!-- 这里是地主的牌 -->
+    </div>
+    <div id="buttons">
+      <!-- 这里是操作按钮 -->
+      <button id="start" class="button">开始</button>
+      <button id="call" class="button disabled">叫地主</button>
+      <button id="play" class="button disabled">出牌</button>
+      <button id="pass" class="button disabled">不出</button>
+    </div>
+    <div id="table" class="player">
+      <!-- 这里是桌面上的牌 -->
+    </div>
+  </div>
+  <script>
+    // 这里可以写一些JavaScript代码来实现斗地主的游戏逻辑和交互
+
+    // 定义一些全局变量
+    var cards = []; // 所有的牌
+    var players = []; // 所有的玩家
+    var landlord = null; // 地主
+    var turn = null; // 当前回合
+    var lastPlay = null; // 上一次出的牌
+
+        // 定义一些常量
+    var CARD_TYPES = ["♠", "♥", "♣", "♦"]; // 牌的花色
+    var CARD_VALUES = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"]; // 牌的点数
+    var CARD_IMAGES = { // 牌的图片
+      "♠3": "https://upload.wikimedia.org/wikipedia/commons/0/02/Playing_card_spade_3.svg",
+      "♠4": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Playing_card_spade_4.svg",
+      "♠5": "https://upload.wikimedia.org/wikipedia/commons/9/94/Playing_card_spade_5.svg",
+      "♠6": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Playing_card_spade_6.svg",
+      "♠7": "https://upload.wikimedia.org/wikipedia/commons/6/66/Playing_card_spade_7.svg",
+      "♠8": "https://upload.wikimedia.org/wikipedia/commons/2/21/Playing_card_spade_8.svg",
+      "♠9": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Playing_card_spade_9.svg",
+      "♠10": "https://upload.wikimedia.org/wikipedia/commons/8/87/Playing_card_spade_10.svg",
+      "♠J": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Playing_card_spade_J.svg",
+      "♠Q": "https://upload.wikimedia.org/wikipedia/commons/5/51/Playing_card_spade_Q.svg",
+      "♠K": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Playing_card_spade_K.svg",
+      "♠A": "https://upload.wikimedia.org/wikipedia/commons/5/57/Playing_card_spade_A.svg",
+      "♠2": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Playing_card_spade_2.svg",
+      // 省略其他花色的图片
+    };
+    var CARD_RANKS = { // 牌的大小顺序
+      // 省略3到A的顺序
+      // 特殊牌
+      "*": 14, // 小王
+      "**": 15, // 大王
+    };
+    var HAND_TYPES = { // 手牌类型
+      SINGLE: 1, // 单张
+      PAIR: 2, // 对子
+      TRIPLE: 3, // 三张
+      TRIPLE_WITH_ONE: 4, // 三带一
+      TRIPLE_WITH_TWO: 5, // 三带二
+      STRAIGHT: 6, // 顺子
+      DOUBLE_STRAIGHT: 7, // 双顺
+      TRIPLE_STRAIGHT: 8, // 飞机
+      TRIPLE_STRAIGHT_WITH_ONE: 9, // 飞机带单
+      TRIPLE_STRAIGHT_WITH_TWO: 10, // 飞机带双
+      FOUR_WITH_TWO: 11, // 四带二
+      FOUR_WITH_TWO_PAIRS: 12, // 四带两对
+      BOMB: 13, // 炸弹
+      ROCKET: 14, // 火箭
+    };
+
+    // 定义一些辅助函数
+
+    // 创建一副牌，包括大小王，返回一个数组，每个元素是一个对象，包含type（花色），value（点数），image（图片），rank（大小）
+    function createCards() {
+      var cards = [];
+      for (var i = 0; i < CARD_TYPES.length; i++) {
+        for (var j = 0; j < CARD_VALUES.length; j++) {
+          var card = {
+            type: CARD_TYPES[i],
